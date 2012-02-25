@@ -1,0 +1,147 @@
+#define _XOPEN_SOURCE 700
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <gauss_jordan_int.h>
+
+
+
+int init_matrix_int (matrix_int *matrix, int m, int n )
+{
+  int i, j;
+
+  if (n <= 0 || m <= 0)
+    {
+      puts("ERROR.init_matrix_int: n = m = 0");
+      return EXIT_FAILURE;
+    }
+
+  matrix->m = m;
+  matrix->n = n;
+  matrix->mat = malloc (m * n * sizeof (int));
+  
+  for (i = 0; i < m; i++)
+    {
+      for (j = 0; j < n; j++)
+	{
+	  matrix->mat[i * n + j] = 0;
+	}
+    }
+  return EXIT_SUCCESS;
+}
+
+
+int set_element ( matrix_int *matrix, int i, int j, int elem)
+{
+  int m = matrix->m;
+  int n = matrix->n;
+  
+  if ( i <= 0 || j <= 0 || i > m || j > n)
+    {
+      puts("[ ERROR ] gauss_jordan_int.set_element: index out of bounds");
+      return EXIT_FAILURE;
+    }
+  matrix->mat[(i - 1) * n + j - 1] = elem;
+  return EXIT_SUCCESS;
+}
+
+
+
+int get_element ( matrix_int *matrix, int i, int j)
+{
+  int m = matrix->m;
+  int n = matrix->n;
+  
+  if (i <= 0 || j <= 0 || i > m || j > n)
+    {
+      puts("[ ERROR ] gauss_jordan_int.get_element: index out of bounds");
+      exit (EXIT_FAILURE);
+    }
+
+  return matrix->mat[(i - 1) * n + j - 1];
+}
+
+
+int swap_rows ( matrix_int *matrix, int i_1, int i_2)
+{
+  int j;
+  int buf;
+  int m = matrix->m;
+  int n = matrix->n;
+
+  if (i_1 <= 0 || i_2 <= 0 || i_1 > m || i_2 > m)
+    {
+      puts("[ ERROR ] gauss_jordan_int.swap_rows: index out of bounds");
+      return EXIT_FAILURE;
+    }
+
+  if (i_1 == i_2) return EXIT_SUCCESS;
+
+  for (j = 0; j < n; j++)
+    {
+      buf = matrix->mat[(i_1 - 1) * n + j - 1];
+      matrix->mat[(i_1 - 1) * n + j - 1] = matrix->mat[(i_2 - 1) * n + j - 1];
+      matrix->mat[(i_2 - 1) * n + j - 1] = buf;
+    }
+
+  return EXIT_SUCCESS;
+}
+
+
+int arith_rows (matrix_int *matrix, int i_1, int i_2, char op_type)
+{
+  int j;
+  int m = matrix->m;
+  int n = matrix->n;
+  
+  if (i_1 <= 0 || i_2 <= 0 || i_1 > m || i_2 > m)
+    {
+      puts("[ ERROR ] gauss_jordan_int.arith_rows: index out of bounds");
+      return EXIT_FAILURE;
+    }
+
+  switch (op_type)
+    {
+    case '+':
+      for (j = 0; j < n; j++)
+	{
+	  matrix->mat[(i_1 - 1) * n + j - 1] += matrix->mat[(i_2 - 1) * n + j - 1];
+	}
+      break;
+
+    case '-':
+      for (j = 0; j < n; j++)
+	{
+	  matrix->mat[(i_1 - 1) * n + j - 1] -= matrix->mat[(i_2 - 1) * n + j - 1];
+	}
+      break;
+    }
+  return EXIT_SUCCESS;
+}
+
+
+int int_elimination (matrix_int *matrix)
+{
+
+  return EXIT_SUCCESS;
+}
+
+
+void fprint_matrix (FILE* stream, matrix_int *matrix)
+{
+  int i;
+  int j;
+  int m = matrix->m;
+  int n = matrix->n;
+   
+  for (i = 0; i < m; i++)
+    {
+      for (j = 0; j < n; j++)
+	{
+	  fprintf (stream, " %d ", matrix->mat[i * n + j]);
+	  if (j == n - 1) fputs("\n", stream); 
+	}
+    }
+}
+
+

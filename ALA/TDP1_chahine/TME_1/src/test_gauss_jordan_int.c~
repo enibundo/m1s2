@@ -1,0 +1,123 @@
+#define _XOPEN_SOURCE 700
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include <gauss_jordan_int.h>
+
+
+void test_init_matrix_int (matrix_int *mat, int m, int n )
+{
+  fputs("[ TEST ]\tinit_matrix_int ...\t\t", stderr);
+  if (EXIT_FAILURE == init_matrix_int (mat, 3, 3)) 
+    {
+      fputs("[ FAIL ]\n", stderr);
+      exit (EXIT_FAILURE);
+    }
+  fputs("[ DONE ]\n", stderr);
+}
+
+
+void test_set_element ( matrix_int * mat , int i, int j, int elem)
+{
+  fprintf(stderr,
+	  "[ TEST ]\tset_element [%d;%d] = %d ...\t",
+	  i, j, elem);
+
+  if (EXIT_FAILURE == set_element ( mat, i, j, elem))
+    {
+      fputs("[ FAIL ]\n", stderr);
+      exit (EXIT_FAILURE);
+    }
+  fputs("[ DONE ]\n", stderr);  
+}
+
+
+void test_get_element ( matrix_int *mat, int i, int j, int elem)
+{
+  int res;
+  fprintf(stderr,
+	  "[ TEST ]\tget_element [%d;%d] = %d ?...\t",
+	  i, j, elem);
+
+  res = get_element ( mat, i, j);
+  if (elem != res)
+    {
+      fputs("[ FAIL ]\n", stderr);
+      exit (EXIT_FAILURE);
+    }
+  fputs("[ DONE ]\n", stderr);
+}
+
+
+void test_swap_rows ( matrix_int *mat, int i_1, int i_2)
+{
+  fprintf(stderr,
+	  "[ TEST ]\tswap_rows %d and %d ...\t",
+	  i_1, i_2);
+
+  if (EXIT_FAILURE == swap_rows (mat, i_1, i_2))
+    {
+      fputs("[ FAIL ]\n", stderr);
+      exit (EXIT_FAILURE);
+    }
+  fputs("[ DONE ]\n", stderr);
+}
+
+
+void test_arith_rows (matrix_int *mat, int i_1, int i_2, char op_type)
+{
+  fprintf(stderr,
+	  "[ TEST ]\tarith_rows %d %c %d ...\t",
+	  i_1, op_type, i_2);
+
+  if (EXIT_FAILURE == arith_rows (mat, i_1, i_2, op_type))
+    {
+      fputs("[ FAIL ]\n", stderr);
+      exit (EXIT_FAILURE);
+    }
+  fputs("[ DONE ]\n", stderr);
+}
+
+
+int main (int args, char ** argv)
+{
+  
+  matrix_int * mat = malloc (sizeof (matrix_int));
+  
+  
+
+  test_init_matrix_int (mat, 3, 3);
+  fputs("\n", stderr);
+  fprint_matrix(stderr, mat);
+  fputs("\n", stderr);
+
+  test_set_element ( mat, 1, 1, 1);  
+  test_set_element ( mat, 1, 2, 2);
+  test_set_element ( mat, 1, 3, 3);
+
+  test_set_element ( mat, 2, 1, 4);
+  test_set_element ( mat, 2, 2, 5);
+  test_set_element ( mat, 2, 3, 6);
+
+  test_set_element ( mat, 3, 1, 7);
+  test_set_element ( mat, 3, 2, 8);
+  test_set_element ( mat, 3, 3, 9);
+
+  fputs("\n", stderr);
+  fprint_matrix(stderr, mat);
+  fputs("\n", stderr);
+    
+  test_swap_rows (mat, 2, 3);
+  fputs("\n", stderr);
+  fprint_matrix(stderr, mat);
+  fputs("\n", stderr);
+  
+  test_arith_rows (mat, 1, 2, '-');
+  fputs("\n", stderr);
+  fprint_matrix(stderr, mat);
+  fputs("\n", stderr);
+    
+  return EXIT_SUCCESS;
+}

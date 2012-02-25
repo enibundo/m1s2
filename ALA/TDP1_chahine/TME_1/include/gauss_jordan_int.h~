@@ -1,0 +1,34 @@
+
+
+/* Matrix row and column's numbers start at 1*/
+typedef struct matrix_int
+{
+  int m;
+  int n;
+  int *mat;
+} matrix_int;
+
+
+/* Initializes to 0 a m*n matrix*/
+int init_matrix_int (matrix_int *matrix, int m, int n );
+
+/* Sets the integer elem at matrix[i,j] */
+int set_element ( matrix_int *matrix, int i, int j, int elem);
+
+/* Returns the integer at matrix[i,j] */
+int get_element ( matrix_int *matrix, int i, int j);
+
+/* Swaps the i_1'st row with the i_2'nd */
+int swap_rows ( matrix_int *matrix, int i_1, int i_2);
+
+/* Computes the rows op_type operation on the i_1'st row 
+   with the i_2'nd */
+int arith_rows (matrix_int *matrix, int i_1, int i_2, char op_type);
+
+/* Prints the matrix on given stream */
+void fprint_matrix (FILE* stream, matrix_int *matrix);
+
+
+/* Computes a Gauss-Jordan elimination */
+int int_elimination (matrix_int *matrix);
+
