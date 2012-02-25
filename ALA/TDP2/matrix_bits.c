@@ -1,6 +1,6 @@
 // pour la structure de matrix
 #include "matrix_bits.h"
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,31 +17,74 @@ void free_matrix(matrix tofree){
 }
 
 uint64 get_mask (uint64 position) {
-  return (1<<(63-position));
+  return ( ((uint64)1) << (63-position));
 }
 
-uint64 get_element(matrix m, uint64 row, uint64 column) {
-  uint64 len = (row-1)*m->columns+column;
+uint64 get_block_of_cell(matrix m, uint64 row, uint64 column) {
+  uint64 len = (row)*m->columns+column;
   uint64 block = len / SIZE_PER_BLOCK;
-  uint64 pos = len % SIZE_PER_BLOCK;
+  return block;
+}
+
+uint64 get_position_of_cell(matrix m, uint64 row, uint64 column) {
+  uint64 len = (row)*m->columns+column;
+  uint64 block = len / SIZE_PER_BLOCK;
+  uint64 pos = len % SIZE_PER_BLOCK;   
+  return pos;
+}
+
+short get_element(matrix m, uint64 row, uint64 column) {
+
+  uint64 block = get_block_of_cell(m, row, column);
+  uint64 pos = get_position_of_cell(m, row, column);
   uint64 mask = get_mask (pos);
-
-  uint64 ret= ((m->elements[block] & mask)!=0 ? ONE : ZERO);
   
-  
-  // DEBUG
-  printf ("block %d; position %d; mask %d = %d\n", block, pos, mask, ret);
-
+  short ret= ((m->elements[block] & mask)!=0 ? ONE : ZERO);  
   return ret;
+}
 
 
+// 
+int set_element(matrix m, uint64 row, uint64 column, short value) {
+  uint64 block = get_block_of_cell(m, row, column);
+  uint64 pos = get_position_of_cell(m, row, column);
+  uint64 mask = get_mask (pos);
+  
+  printf ("block = %lld and pos = %lld\n", block, pos);
+  
+  uint64 ret = m->elements[block];
+  switch (value) { 
+  case 1:
+    if (!(ret & mask)) {
+      m->elements[block] = ret | mask;
+    }
+    break;
+  case 0:
+    if (ret & mask) { 
+      m->elements[block] = ret ^ mask;
+    }
+    break;
+  default:
+    fprintf(stderr, "ERROR in set_element, value should be 1 or 0");
+    return 1;
+  }
+  return 0;
+}
+
+void initialise_matrix(matrix m){
+  uint64 no_elements = m->rows * m->columns;
+  int blocks = no_elements / SIZE_PER_BLOCK;
+  uint64 i;
+  for (i=0; i < blocks; i++) {
+    m->elements[i]=0;
+  }
 }
 
 void print_matrix(matrix m) {
   uint64 i, j;
   
   for (i=0; i<m->rows; i++) {
-    for (i=0; i<m->columns; i++) {
+    for (j=0; j<m->columns; j++) {
       printf ("%d ", get_element(m, i, j));
       fflush(stdout);
     }
@@ -49,33 +92,57 @@ void print_matrix(matrix m) {
   }
 }
 
-/*
-matrix construct_matrix (uint64 rows, uint64 columns, uint64 *elements) {
-  uint64 i, j;
-  matrix ret = alloc_matrix(rows, columns);
-  for (i=0; i<rows*columns; i++) {
-    ret->elements[i] = elements[i];
+void swap_lines(matrix m, uint64 line1, uint64 line2) { 
+  uint64 i;
+  int tempo;
+  short *bkup = malloc(sizeof(short)*m->columns);
+  
+  for (i = 0; i < m->columns; i++) {
+    bkup[i] = get_element(m, line1, i);
   }
-  return ret;
+  
+  for (i=0; i<m->columns; i++) { 
+    tempo = get_element(m, line2, i);
+    set_element(m, line1, i, tempo);
+    set_element(m, line2, i, bkup[i]);
+  }
+
 }
-*/
 
-
+void test_get_mask() { 
+  uint64 i;
+  printf("testing get_mask\n");
+  for (i = 1; i<64; i++) { 
+    printf("i=%lld -> get_mask = %lld\n", i, get_mask(i));
+  }
+  
+}
 
 int main(){
-  int i;
 
+  int i;
   matrix test = alloc_matrix(6, 4);
-  
   // 111100001111000011110000
   // test->elements[0] = 15790320;
-  
-  test->elements[0] = 5;
+  initialise_matrix(test);
+  //  test->elements[0] = 5;
   // print_matrix(test);
-     for (i=0; i<64; i++) {
-    printf ("%d - %ld\n", i, get_element(test, 1, i));
-    }
-     //printf ("%ld\n",get_element(test, 1, 20));  
-  return 0;
+  //for (i=0; i<64; i++) {
+  //printf ("%d - %ld\n", i, get_element(test, 1, i));
+  //}
+  
+  //printf ("%lld\n",get_element(test, 1, 20));  
+  for (i=0; i<4; i++) { 
+    set_element(test, (uint64)i, (uint64)i, 1);
+  }
+  
+  print_matrix(test);
+  printf("================\n");
+  swap_lines(test, (uint64)1, (uint64)2);
+  print_matrix(test);
+  free_matrix(test);
 
+  //printf("starting tests\n");
+  // test_get_mask();
+  return 0;
 }
