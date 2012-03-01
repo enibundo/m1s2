@@ -1,0 +1,14 @@
+saying M[8][8].. that means the size of M is 8*8=64.
+I'm using only a uint64 for representing M.
+
+| X0 X1 X2 X3 X4 X5 X6 X7 |
+| X  X  X  X  X  X  X  X  |
+| X  X  X  X  X  X  X  X  |
+| X  X  X  X  X  X  X  X  |
+| X  X  X  X  X  X  X  X  |
+| X  X  X  X  X  X  X  X  |
+| X  X  X  X  X  X  X  X  |
+| X  X  X  X  X  X..X62X63|
+
+wher Xi is the i-th bith of the integer.
+
