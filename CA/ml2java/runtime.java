@@ -1,5 +1,4 @@
 
-
 abstract class MLvalue extends Object {
   
   abstract void  print();

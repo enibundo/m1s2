@@ -1,0 +1,42 @@
+#include "matrix.c"
+
+int test_set_element_entity(matrix m, uint64 row, uint64 column, int val){
+  int ret;
+  
+  int old_val = get_element(m, row, column);
+  
+  set_element(m, row, column, val);
+  
+  ret = (get_element(m, row, column)==val);
+  
+  set_element(m, row, column, old_val);
+  
+  return ret;
+}
+  
+
+void test_set_element() { 
+  matrix test = alloc_matrix((uint64)4, (uint64)4);
+  initialise(test);
+ 
+  if (test_set_element_entity(test, (uint64)1, (uint64)1, 1)) {
+    printf("DONE!\n");
+  }
+  
+  if (test_set_element_entity(test, (uint64)2, (uint64)3, 1)) {
+    printf("DONE!\n");
+  }
+  
+  if (test_set_element_entity(test, (uint64)0, (uint64)1, 1)) {
+    printf("DONE!\n");
+  }
+  
+  if (test_set_element_entity(test, (uint64)1, (uint64)0, 1)) {
+    printf("DONE!\n");
+  }
+}
+
+int main() { 
+  test_set_element();
+  return 0;
+}
