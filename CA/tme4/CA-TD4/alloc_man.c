@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
 struct cons {
   int car; 
   struct cons *cdr;

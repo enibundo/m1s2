@@ -160,27 +160,27 @@ let footer_three  s =
 (* on recuoere le  type pour une declaration precise *)
 
 let string_of_const_type ct = match ct with   
-  INTTYPE    -> "MLint "
-| FLOATTYPE  -> "MLdouble "
-| STRINGTYPE -> "MLstring "
-| BOOLTYPE   -> "MLbool "
-| UNITTYPE   -> "MLunit "
+  INTTYPE    -> ""
+| FLOATTYPE  -> ""
+| STRINGTYPE -> ""
+| BOOLTYPE   -> ""
+| UNITTYPE   -> ""
 ;;
  
 let rec string_of_type typ = match typ with 
   CONSTTYPE t -> string_of_const_type t
-| ALPHA    ->  "MLvalue " 
-| PAIRTYPE -> "MLpair "
-| LISTTYPE -> "MLlist "
-| FUNTYPE  -> "MLfun "
-| REFTYPE  -> "MLref "
+| ALPHA    ->  "" 
+| PAIRTYPE -> ""
+| LISTTYPE -> ""
+| FUNTYPE  -> ""
+| REFTYPE  -> ""
 ;;
 
 
 let prod_global_var instr = match instr with
   VAR (v,t) -> out_start ("static "^"MLvalue "^(*(string_of_type t)*)v^";") 1 
 | FUNCTION (ns,t1,ar,(p,t2), instr) ->
-    out_start ("static MLvalue "(*"fun_"^ns^" "*)^ns^"= new MLfun_"^ns^"("^(string_of_int ar)^");") 1
+    out_start (""(*"fun_"^ns^" "*)^ns^"= "^ns^"("^(string_of_int ar)^");") 1
 | _ -> ()
 ;;
 
@@ -194,12 +194,12 @@ let get_param_type lv =
 
 
 let prod_const c = match c with 
-  INT i -> out ("new MLint("^(string_of_int i)^")")
-| FLOAT f -> out ("new MLdouble("^(string_of_float f)^")")
-| BOOL b  -> out ("new MLbool("^(if b then "true" else "false")^")")
-| STRING s -> out ("new MLstring("^"\""^s^"\""^")")
-| EMPTYLIST -> out ("MLruntime.MLnil")
-| UNIT ->      out ("MLruntime.MLlrp")
+  INT i -> out (string_of_int i)
+| FLOAT f -> out (string_of_float f)
+| BOOL b  -> out ((if b then "True" else "False"))
+| STRING s -> out ("\""^s^"\"")
+| EMPTYLIST -> out ("[]")
+| UNIT ->      out ("None")
 ;;
 
 let rec prod_local_var (fr,sd,nb) (v,t) = 
@@ -238,10 +238,10 @@ let rec prod_instr (fr,sd,nb) instr  = match instr with
              
 | APPLY(i1,i2) -> 
    out_before(fr,sd,nb);
-     out ("((MLfun)");
+     
      prod_instr (false,"",nb) i1;
-     out ")";
-     out ".invoke(";
+     
+     out "(";
      prod_instr (false,"",nb) i2;     
      out")";
    out_after(fr,sd,nb)
@@ -267,6 +267,8 @@ let fun_header fn cn  =
      " *    vue comme la classe : "^cn^"\n";
      " */ \n"]
 ;;
+
+
 
 let prod_invoke cn  ar = 
   List.iter out_line 
@@ -304,7 +306,7 @@ let prod_fun instr = match instr with
   FUNCTION (ns,t1,ar,(lp,t2),instr) -> 
       let class_name = "MLfun_"^ns in
       fun_header ns class_name ;
-      out_line ("class "^class_name^" extends MLfun {");
+      out_line ("def MLfun_"^class_name^"(){");
       out_line "";
       out_line ("  private static int MAX = "^(string_of_int ar)^";") ;
       out_line "";

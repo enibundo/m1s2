@@ -13,7 +13,7 @@
  *   langinter.ml : langage intermediaire pour la phase de compilation  *
  *                  independant de Java                                 *
  *                                                                      *
- *   version : $Version$     $Date: 2006/05/01 15:35:26 $                                     *
+ *   version : $Version$     $Date: 2006/05/01 15:35:26 $               *
  *                                                                      *
  *   auteur : Emmanuel Chailloux                                        *
  *                                                                      *

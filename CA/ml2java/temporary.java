@@ -33,13 +33,13 @@ class MLfun_myfun___1 extends MLfun {
         MLvalue T___4;
         MLvalue T___5;
         T___4=x___2;
-        T___5=new MLint(0);
-        T___3=MLruntime.MLequal( (MLint )T___4,(MLint )T___5);
+        T___5=0;
+        T___3=MLruntime.MLequal( ()T___4,()T___5);
       }
       if (((MLbool)T___3).MLaccess())
         { 
           MLvalue T___6;
-          T___6=new MLint(0);
+          T___6=0;
           return T___6;
         }
       else
@@ -53,10 +53,10 @@ class MLfun_myfun___1 extends MLfun {
               MLvalue T___10;
               MLvalue T___11;
               T___10=x___2;
-              T___11=new MLint(1);
-              T___9=MLruntime.MLsubint( (MLint )T___10,(MLint )T___11);
+              T___11=1;
+              T___9=MLruntime.MLsubint( ()T___10,()T___11);
             }
-            T___7=((MLfun)T___8).invoke(T___9);
+            T___7=T___8(T___9);
           }
           return T___7;
         }
@@ -70,7 +70,7 @@ class MLfun_myfun___1 extends MLfun {
  */
 class temporary {
 
-  static MLvalue myfun___1= new MLfun_myfun___1(1);
+  myfun___1= myfun___1(1);
 
 public static void main(String []args) {
 
