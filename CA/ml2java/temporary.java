@@ -7,7 +7,7 @@
  *  de'claration de la fonction myfun___1
  *    vue comme la classe : MLfun_myfun___1
  */ 
-class MLfun_myfun___1 extends MLfun {
+def MLfun_MLfun_myfun___1(){
 
   private static int MAX = 1;
 
@@ -28,30 +28,41 @@ class MLfun_myfun___1 extends MLfun {
   MLvalue invoke_real(MLvalue x___2) {
 
     { 
-      MLvalue T___3;
+      T___3
+
       { 
-        MLvalue T___4;
-        MLvalue T___5;
+        T___4
+
+        T___5
+
         T___4=x___2;
         T___5=0;
         T___3=MLruntime.MLequal( ()T___4,()T___5);
       }
-      if (((MLbool)T___3).MLaccess())
+      if T___3:
+	
         { 
-          MLvalue T___6;
+          T___6
+
           T___6=0;
           return T___6;
         }
-      else
+      else:
+	
         { 
-          MLvalue T___7;
+          T___7
+
           { 
-            MLvalue T___8;
-            MLvalue T___9;
+            T___8
+
+            T___9
+
             T___8=temporary.myfun___1;
             { 
-              MLvalue T___10;
-              MLvalue T___11;
+              T___10
+
+              T___11
+
               T___10=x___2;
               T___11=1;
               T___9=MLruntime.MLsubint( ()T___10,()T___11);

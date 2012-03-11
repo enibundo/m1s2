@@ -11,24 +11,26 @@ uint64 get_number_of_blocks(uint64 columns) {
 }
 
 matrix alloc_matrix(uint64 rows, uint64 columns) { 
-  uint64 i;
   
+  uint64 i;  
   matrix ret = malloc (sizeof(struct _matrix));
 
   ret->rows = rows;
   ret->columns = columns;
 
   ret->elements = malloc (sizeof(uint64*)*rows);
+  
   for (i = 0; i < columns; i++) {
     ret->elements[i]=(uint64*)(malloc(sizeof(uint64)*(get_number_of_blocks(columns))));
   }
+  
   return ret;
 }
 
 void initialise(matrix m) { 
   uint64 i, j;
   for (i=0; i<m->rows; i++) { 
-    for (j=0; j<m->columns; j++) {
+    for (j=0; j<get_number_of_blocks(m->columns); j++) {
       m->elements[i][j]=0;
     }
   }
@@ -122,66 +124,68 @@ uint64 first_bit_position(matrix m, uint64 line) {
   return -1; // ligne nulle
 }
 
+
+// swaps 2 entiers
+void swap(uint64 *a, uint64 *b){
+  uint64 t=*a; *a=*b; *b=t;
+}
+
+// sorts first and second arr
+void sort(uint64 arr[], uint64 arr2[], int beg, int end){
+  if (end > beg + 1){
+    int piv = arr[beg];
+    int l = beg + 1;
+    int r = end;
+    
+    while (l < r){
+      if (arr[l] <= piv)
+	l++;
+      else {
+	r--;
+	swap(&arr[l], &arr[r]);
+	swap(&arr2[l], &arr2[r]);	
+      }
+    }
+    l--;
+    swap(&arr[l], &arr[beg]);
+    swap(&arr2[l], &arr2[beg]);
+    
+    sort(arr, arr2, beg, l);
+    sort(arr, arr2, r, end);
+  }
+}
+
+
 int normalize(matrix m){ 
   uint64 lines[m->rows];
   uint64 lines_pivots[m->rows];
+  uint64 already_swaped[m->rows];
+  
   uint64 i, L, R, beg[m->rows], end[m->rows], piv, piv_lines;
   
-  // initialize arrays
   for (i=0; i < m->rows; i++) { 
     lines_pivots[i] = first_bit_position(m, i);
     lines[i]=i;
+    already_swaped[i]=-1;
   }
   
-  for (i=0; i<m->rows; i++) { 
-    printf (" %lld->%lld\n", lines[i], lines_pivots[i]);
+  sort(lines_pivots, lines, 0, m->rows);
+  
+  matrix ret = alloc_matrix(m->rows, m->columns);
+ 
+  for (i=0; i<m->rows; i++) {
+    ret->elements[i]=m->elements[lines[i]];
   }
-  printf("============+++++++++===========\n");
-  beg[0]=0;
-  end[0]=m->rows-1;
-  while (i>=0) {
-    L=beg[i];
-    R=end[i]-1;
-    if (L<R) { 
-      piv = lines_pivots[i];
-      piv_lines = lines[i];
-      
-      if (i==m->rows-1) goto done;
-      
-      while (L<R) { 
-	while (lines_pivots[R]>=piv && L<R) R--;
-	if (L<R) {
-	  lines_pivots[L++]=lines_pivots[R];
-	  lines[L++]=lines[R];
-	}
-	
-	while (lines_pivots[L]<=piv && L<R) L++;
-	
-	if (L<R) {
-	  lines_pivots[R--]=lines_pivots[L];
-	  lines[R--]=lines[L];
-	}
-      }
-
-      lines_pivots[L] = piv;
-      lines[L]=piv_lines;
-
-      beg[i+1]=L+1;
-      end[i+1]=end[i];
-      end[i++]=L;
-    } else {
-      i--;
-    }
+  for (i=0; i<m->rows; i++) {
+    m->elements[i]=ret->elements[i];
   }
- done:
-
-  for (i=0; i<m->rows; i++) { 
-    printf (" %lld->%lld\n", lines[i], lines_pivots[i]);
-  }
+  
+  free(ret->elements);
+  free(ret);
 
 }
 
-void xorLines(matrix m, uint64 line1, uint64 line2){ 
+void xor_lines(matrix m, uint64 line1, uint64 line2){ 
   uint64 i;
   uint64 blocks = get_number_of_blocks(m->columns);
   for (i=0; i < blocks; i++) { 
@@ -203,7 +207,27 @@ int ligne_nulle(matrix m, uint64 line) {
 
   
 void gaussjordan(matrix m) { 
-  // TODO
+  uint64 i, j, h;
+  
+  normalize(m);
+  
+  for (i=0; i<m->columns; i++) { 
+    for (j=0; j<m->rows; j++) { 
+      for (h=0; h<m->rows; h++) { 
+	if (get_element(m, j, i) &&
+	    get_element(m, h, i) &&
+	    first_bit_position(m, j) <= first_bit_position(m, h) &&
+	    h!=j) {
+	  xor_lines(m, h, j);
+	  // printf ("xoring %lld with %lld\n", h, j);
+	  normalize(m);
+	  //print_matrix(m);
+	  h=0;
+	    
+	}
+      }
+    }
+  }
 }
 
 
@@ -234,10 +258,9 @@ int main() {
   matrix test = easy_construct((uint64)4, (uint64)4, bits);
   
   print_matrix(test);
-  //gaussjordan(test);
-  normalize(test);
+  gaussjordan(test);
+  
   printf("=================\n");
-  //printf("%lld\n", first_bit_position(test, 0));
-  //print_matrix(test);
+  print_matrix(test);
   return 0;
 }

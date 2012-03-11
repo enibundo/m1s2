@@ -72,8 +72,8 @@ let alpha = max_unknown () in
 
 (
 List.map build 
-     ["true" ,"MLruntime.MLtrue";
-      "false","MLruntime.MLfalse";
+     ["true" ,"True";
+      "false","False";
       "+","MLruntime.MLaddint";
       "-","MLruntime.MLsubint";
       "*","MLruntime.MLmulint";
@@ -140,7 +140,6 @@ let header_two  s =
   [ "/**\n";
     " * \n";
     " */\n";
-    "class "^s^" {\n"
   ]
 ;;
 
@@ -148,13 +147,12 @@ let footer_two  s = ();;
 
 let header_three  s = 
   List.iter out
-  [  "\n\n";
-     "public static void main(String []args) {\n"]
+  [  "\n\n"; ]
 ;;
 
 let footer_three  s = 
   List.iter out
-  [ "\n}}\n\n"]
+  []
 ;;
 
 (* on recuoere le  type pour une declaration precise *)
@@ -203,7 +201,7 @@ let prod_const c = match c with
 ;;
 
 let rec prod_local_var (fr,sd,nb) (v,t) = 
-  out_start ("MLvalue "(*(string_of_type t)*)^v^";") nb;;
+  out_start (v^"\n") nb;;
 
 let rec prod_instr (fr,sd,nb) instr  = match instr with 
   CONST c -> out_before (fr,sd,nb);
@@ -218,23 +216,23 @@ let rec prod_instr (fr,sd,nb) instr  = match instr with
                out_after (fr,sd,nb)           
              end
 | IF(i1,i2,i3) -> 
-              out_start "if (" nb;
-              out ("((MLbool)");
+              out_start "if " nb;
+              out ("");
               prod_instr (false,"",nb) i1 ;
-              out ")";
-              out".MLaccess()";
-              out ")";
+              out ":\n\t";
+	      
+              out "";
               prod_instr (fr,sd,nb+1) i2 ;
-              out_start "else" (nb);
+              out_start "else:\n\t" (nb);
               prod_instr (fr,sd,nb+1) i3
 | RETURN i -> prod_instr (true,"",nb) i
 | AFFECT (v,i) -> prod_instr (false,v,nb) i
 | BLOCK(l,i) -> out_start "{ " nb;
-                  List.iter (fun (v,t,i) -> prod_local_var (false,"",nb+1) 
-                                           (v,t)) l;
-                  List.iter (fun (v,t,i) -> prod_instr (false,v,nb+1) i) l;
-                  prod_instr (fr,sd,nb+1) i;
-                out_start "}" nb
+    List.iter (fun (v,t,i) -> prod_local_var (false,"",nb+1) 
+                 (v,t)) l;
+    List.iter (fun (v,t,i) -> prod_instr (false,v,nb+1) i) l;
+    prod_instr (fr,sd,nb+1) i;
+    out_start "}" nb
              
 | APPLY(i1,i2) -> 
    out_before(fr,sd,nb);
@@ -306,7 +304,7 @@ let prod_fun instr = match instr with
   FUNCTION (ns,t1,ar,(lp,t2),instr) -> 
       let class_name = "MLfun_"^ns in
       fun_header ns class_name ;
-      out_line ("def MLfun_"^class_name^"(){");
+      out_line ("def MLfun_"^class_name^":\n\t");
       out_line "";
       out_line ("  private static int MAX = "^(string_of_int ar)^";") ;
       out_line "";
