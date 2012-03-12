@@ -209,27 +209,36 @@ int ligne_nulle(matrix m, uint64 line) {
 void gaussjordan(matrix m) { 
   uint64 i, j, h;
   
+  printf("before normalizing:\n"); print_matrix(m);
+
   normalize(m);
-  
+
+  printf("after normalizing:\n"); print_matrix(m);
+
   for (i=0; i<m->columns; i++) { 
     for (j=0; j<m->rows; j++) { 
-      for (h=0; h<m->rows; h++) { 
+      for (h=j+1; h<m->rows; h++) { 
 	if (get_element(m, j, i) &&
 	    get_element(m, h, i) &&
 	    first_bit_position(m, j) <= first_bit_position(m, h) &&
-	    h!=j) {
+	    h !=j ) {
+
+
+	  printf ("h= %lld j=%lld\n", h, j);
+	  printf("going to xor %lld and ->%lld\n", h, j);
+
 	  xor_lines(m, h, j);
-	  // printf ("xoring %lld with %lld\n", h, j);
+
+	  print_matrix(m);
+	  
+
 	  normalize(m);
-	  //print_matrix(m);
-	  h=0;
-	    
+	  printf("after normalization\n");	  print_matrix(m);
 	}
       }
     }
   }
 }
-
 
 matrix easy_construct(uint64 rows, uint64 columns, int* elements){  
   uint64 i, j, k=0;
@@ -250,16 +259,22 @@ int main() {
   int i;
   
   int bits[] = { 
-    1, 0, 1, 0,					\
+    1, 0, 1, 0, 0, 1, 			\
     0, 0, 0, 1,					\
     0, 1, 1, 0,					\
     1, 1, 1, 1 };
   
-  matrix test = easy_construct((uint64)4, (uint64)4, bits);
+  int bits2[] = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, \
+		 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, \
+		 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, \
+		 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, \
+		 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0};
+  
+  matrix test = easy_construct((uint64)5, (uint64)16,  bits2);
   
   print_matrix(test);
-  gaussjordan(test);
-  
+  //gaussjordan(test);  
+  //normalize(test);
   printf("=================\n");
   print_matrix(test);
   return 0;
