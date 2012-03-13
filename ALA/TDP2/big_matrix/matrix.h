@@ -15,8 +15,8 @@ typedef unsigned long long int uint64;
 
 typedef struct _matrix { 
   
-  uint64 rows;
-  uint64 columns;
+  int rows;
+  int columns;
   
   uint64** elements;
 } *matrix;

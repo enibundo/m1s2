@@ -1,18 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "matrix.h"
-// using uint64
+
 #define SIZE_PER_BLOCK 64
 
-uint64 get_number_of_blocks(uint64 columns) { 
-  uint64 mod = columns % SIZE_PER_BLOCK;
+/*
+ * returns number of blocks for columns
+ */
+int get_number_of_blocks(int columns) { 
+  int mod = columns % SIZE_PER_BLOCK;
   int padding = (mod == 0 ? 0 : 1);
   return (columns / SIZE_PER_BLOCK + padding);
 }
 
-matrix alloc_matrix(uint64 rows, uint64 columns) { 
+matrix alloc_matrix(int rows, int columns) { 
   
-  uint64 i;  
+  int i;  
   matrix ret = malloc (sizeof(struct _matrix));
 
   ret->rows = rows;
@@ -27,8 +30,12 @@ matrix alloc_matrix(uint64 rows, uint64 columns) {
   return ret;
 }
 
+/*
+ * met tout les elements a 0
+ */
 void initialise(matrix m) { 
-  uint64 i, j;
+  int i, j;
+  
   for (i=0; i<m->rows; i++) { 
     for (j=0; j<get_number_of_blocks(m->columns); j++) {
       m->elements[i][j]=0;
@@ -40,8 +47,7 @@ uint64 get_mask (uint64 position) {
   return ( ((uint64)1) << (64-position));
 }
 
-int get_element(matrix m, uint64 row, uint64 column) { 
-  
+int get_element(matrix m, uint64 row, uint64 column) {   
   uint64 column_block = column / SIZE_PER_BLOCK;
   uint64 position_in_block = column % SIZE_PER_BLOCK;
   
@@ -53,12 +59,14 @@ int get_element(matrix m, uint64 row, uint64 column) {
 
 void swap_lines(matrix m, uint64 i, uint64 j) { 
   uint64 *temp = m->elements[i];
+  
   m->elements[i]=m->elements[j];
   m->elements[j]=temp;
 }
 
 void print_matrix(matrix m) {
-  uint64 i, j;
+  int i, j;
+  
   printf ("+");
   for (j=0; j<m->columns; j++) { 
     printf ("   ");
@@ -79,13 +87,12 @@ void print_matrix(matrix m) {
     printf ("   ");
   }
   printf ("+\n");
- 
 }
 
-void set_element(matrix m, uint64 row, uint64 column, int val) { 
+void set_element(matrix m, int row, int column, int val) { 
 
-  uint64 column_block = column / SIZE_PER_BLOCK;
-  uint64 position_in_block = column % SIZE_PER_BLOCK;
+  int column_block = column / SIZE_PER_BLOCK;
+  int position_in_block = column % SIZE_PER_BLOCK;
   uint64 mask = get_mask(position_in_block);
 
   uint64 ret = m->elements[row][column_block];
@@ -101,13 +108,17 @@ void set_element(matrix m, uint64 row, uint64 column, int val) {
       m->elements[row][column_block] = ret ^ mask;
     }
     break;
+  default:
+    fprintf(stderr, "Error cannot set value other than 0 or 1\n");
+    break;
   }
+  
 }
 
 
-uint64 first_bit_position(matrix m, uint64 line) { 
-  uint64 i, j;
-  uint64 position=0;
+int first_bit_position(matrix m, int line) { 
+  int i, j;
+  int position=0;
   for (i=0; i<get_number_of_blocks(m->columns); i++) { 
     if (! m->elements[line][i])
       position += SIZE_PER_BLOCK;
@@ -185,17 +196,15 @@ int normalize(matrix m){
 
 }
 
-void xor_lines(matrix m, uint64 line1, uint64 line2){ 
-  uint64 i;
-  uint64 blocks = get_number_of_blocks(m->columns);
+void xor_lines(matrix m, int line1, int line2){ 
+  int i;
+  int blocks = get_number_of_blocks(m->columns);
   for (i=0; i < blocks; i++) { 
     m->elements[line2][i] ^= m->elements[line1][i];
   }
 }
 
-
-int ligne_nulle(matrix m, uint64 line) { 
-  // SHOULD i be int?
+int ligne_nulle(matrix m, int line) { 
   int ret = 1, i; // nulle 
 
   
@@ -205,43 +214,49 @@ int ligne_nulle(matrix m, uint64 line) {
   return 1;
 }
 
+void gaussjordan(matrix ma) { 
+  int i = -1, j, k;
+  int m = ma->rows;
+  int n = ma->columns;
   
-void gaussjordan(matrix m) { 
-  uint64 i, j, h;
+  int min = (m<n)?m:n;
   
-  printf("before normalizing:\n"); print_matrix(m);
-
-  normalize(m);
-
-  printf("after normalizing:\n"); print_matrix(m);
-
-  for (i=0; i<m->columns; i++) { 
-    for (j=0; j<m->rows; j++) { 
-      for (h=j+1; h<m->rows; h++) { 
-	if (get_element(m, j, i) &&
-	    get_element(m, h, i) &&
-	    first_bit_position(m, j) <= first_bit_position(m, h) &&
-	    h !=j ) {
-
-
-	  printf ("h= %lld j=%lld\n", h, j);
-	  printf("going to xor %lld and ->%lld\n", h, j);
-
-	  xor_lines(m, h, j);
-
-	  print_matrix(m);
-	  
-
-	  normalize(m);
-	  printf("after normalization\n");	  print_matrix(m);
-	}
+  int *pivots=malloc(n*sizeof(int));
+  
+  for (j=0; j<n; j++) pivots[j]=-1;
+ 
+  for (j=0; j<n; j++) {
+ 
+    if (j==0 || pivots[j-1] != -1) i++;
+    for (k=i; k<m; k++) {
+      if (0 != get_element(ma, i, j)) {
+	pivots[j]=i;
+	break;
+      }
+      
+      swap_lines(ma, i, m-1);
+    }
+    
+    if (-1 == pivots[j]) continue;
+    
+    swap_lines(ma, i, pivots[j]);
+    
+    for (k=pivots[j]+1; k<min; k++) {
+      if (0 == get_element(ma, k, j)) continue;
+      xor_lines(ma, pivots[j], k);
+    }
+    
+    for (k=0; k<pivots[j]; k++){
+      if (0 != get_element(ma, k, j)) {
+	xor_lines(ma, (pivots[j]), (k));
       }
     }
   }
+  free (pivots);
 }
 
-matrix easy_construct(uint64 rows, uint64 columns, int* elements){  
-  uint64 i, j, k=0;
+matrix easy_construct(int rows, int columns, int* elements){  
+  int i, j, k=0;
   matrix ret = alloc_matrix(rows, columns);
   initialise(ret);
   
@@ -259,22 +274,17 @@ int main() {
   int i;
   
   int bits[] = { 
-    1, 0, 1, 0, 0, 1, 			\
+    1, 0, 1, 0, 			\
     0, 0, 0, 1,					\
     0, 1, 1, 0,					\
     1, 1, 1, 1 };
   
-  int bits2[] = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, \
-		 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, \
-		 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, \
-		 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, \
-		 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0};
-  
-  matrix test = easy_construct((uint64)5, (uint64)16,  bits2);
+  matrix test = easy_construct(4, 4,  bits);
   
   print_matrix(test);
-  //gaussjordan(test);  
-  //normalize(test);
+  
+  gaussjordan(test);  
+
   printf("=================\n");
   print_matrix(test);
   return 0;
