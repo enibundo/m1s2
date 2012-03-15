@@ -196,11 +196,11 @@ int normalize(matrix m){
 
 }
 
-void xor_lines(matrix m, int line1, int line2){ 
+void xor_lines(matrix m, int line1, int receiver){ 
   int i;
   int blocks = get_number_of_blocks(m->columns);
   for (i=0; i < blocks; i++) { 
-    m->elements[line2][i] ^= m->elements[line1][i];
+    m->elements[receiver][i] ^= m->elements[line1][i];
   }
 }
 
@@ -267,25 +267,4 @@ matrix easy_construct(int rows, int columns, int* elements){
     }
   }
   return ret;
-}
-
-
-int main() { 
-  int i;
-  
-  int bits[] = { 
-    1, 0, 1, 0, 			\
-    0, 0, 0, 1,					\
-    0, 1, 1, 0,					\
-    1, 1, 1, 1 };
-  
-  matrix test = easy_construct(4, 4,  bits);
-  
-  print_matrix(test);
-  
-  gaussjordan(test);  
-
-  printf("=================\n");
-  print_matrix(test);
-  return 0;
 }
