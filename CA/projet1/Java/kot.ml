@@ -1,6 +1,6 @@
-let f = function
-    1 -> 1
-  | _ -> 0
-in 
-  f 10
+let addition = function a->
+  function b->
+    a+b
 ;;
+
+addition 40 2;;

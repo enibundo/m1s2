@@ -1,6 +1,0 @@
-
-open Types;;
-open Typeur;;
-open Env_typeur;;
-open Env_trans;;
-open Langinter;;
