@@ -60,8 +60,19 @@
 
 (define (free-variables terme)
   (if (abstraction? terme)
-      (difference (make-set (free-variables (get-body terme))) (get-formal terme))
+      (difference 
+       (free-variables (get-body terme)) 
+       (make-set (list (get-formal terme))))
+      (if (application? terme)
+	  (union 
+	   (free-variables (get-operator terme))
+	   (free-variables (get-operand terme)))
+	  (if (var? terme)
+	      (make-set (list terme))
+	      (make-set (list))))))
       
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 
 
