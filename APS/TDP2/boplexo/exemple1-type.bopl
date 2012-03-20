@@ -1,0 +1,63 @@
+program(
+  [class(id(Point),
+         cexp(id(Object)) : aType(id(Object)),
+         [var(cexp(id(Int)) : id(Int), id(x)) : id(Void),
+          var(cexp(id(Int)) : id(Int), id(y)) : id(Void)],
+         [method(id(add),
+                 [var(cexp(id(Point)) : aType(id(Point)), id(p)) : id(Void)],
+                 cexp(id(Point)) : id(Point),
+                 [var(cexp(id(Point)) : aType(id(Point)),
+                      id(ret)) : id(Void)],
+                 seq(assign(id(ret) : id(Point),
+                            new(cexp(id(Point)) : aType(id(Point))
+                               ) : id(Point)
+                           ) : id(Void),
+                   seq(writeField(id(ret) : id(Point), id(x),
+                                  plus(readField(self : id(Point), id(x)
+                                                ) : id(Int),
+                                       readField(id(p) : id(Point), id(x)
+                                                ) : id(Int)
+                                      ) : id(Int)
+                                 ) : id(Void),
+                     seq(writeField(id(ret) : id(Point),id(y),
+                                    plus(readField(self : id(Point), id(y)
+                                                  ) : id(Int),
+                                         readField(id(p) : id(Point), id(y)
+                                                  ) : id(Int)
+                                        ) : id(Int)
+                                   ) : id(Void),
+                         return(id(ret) : id(Point)) : id(Void)
+                        ) : id(Void)
+                      ) : id(Void)
+                    ) : id(Void)
+                ) : id(Point) -> id(Point)
+         ]) : id(Void)
+  ],
+  [var(cexp(id(Point)) : aType(id(Point)), id(p1)) : id(Void),
+   var(cexp(id(Point)) : aType(id(Point)), id(p2)) : id(Void),
+   var(cexp(id(Point)) : aType(id(Point)), id(p3)) : id(Void)
+  ],
+  seq(assign(id(p1) : id(Point),
+             new(cexp(id(Point)) : aType(id(Point))) : id(Point)) : id(Void),
+    seq(writeField(id(p1) : id(Point), id(x), int(1) : id(Int)) : id(Void),
+      seq(writeField(id(p1) : id(Point), id(y), int(2) : id(Int)) : id(Void),
+        seq(assign(id(p2) : id(Point),
+                   new(cexp(id(Point)) : aType(id(Point))) : id(Point)
+                  ) : id(Void),
+          seq(writeField(id(p2) : id(Point), id(x), int(5) : id(Int)
+                        ) : id(Void),
+            seq(writeField(id(p2) : id(Point), id(y), int(10) : id(Int)
+                          ) : id(Void),
+              seq(assign(id(p3) : id(Point),
+                         methodCall(id(p1) : id(Point), id(add),
+                                    [id(p2) : id(Point)]) : id(Point)
+                                   ) : id(Void),
+                  writeln(id(p3) : id(Point)) : id(Void)
+                 ) : id(Void)
+               ) : id(Void)
+             ) : id(Void)
+           ) : id(Void)
+         ) : id(Void)
+       ) : id(Void)
+     ) : id(Void)
+) : id(Void)

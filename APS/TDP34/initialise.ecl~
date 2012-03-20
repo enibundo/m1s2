@@ -1,0 +1,17 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% id
+initialise(Id, Env):-member(Id, Env).
+
+
+% exp*
+initialise([HeadExp|TailExps], Env):- 
+	initialise(HeadExp, Env),
+	initialise(TailExps, Env).
+
+% not
+initialise(not(Exp), Env):-
+	initialise(Exp, Env).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

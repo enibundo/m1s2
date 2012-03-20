@@ -1,0 +1,2 @@
+max_list([X], X).
+max_list([X|Ý], Max):- max_list(Y, Max2), (X>=Max2, Max=X;Max=Max2).

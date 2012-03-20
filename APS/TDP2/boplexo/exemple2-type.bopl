@@ -1,0 +1,67 @@
+program([class(id(Paire), cexp(id(Object)) : aType(id(Object)),
+               [var(cexp(id(Int)) : id(Int), id(x)) : id(Void),
+                var(cexp(id(Int)) : id(Int), id(y)) : id(Void)],
+               [method(id(getX),
+                       [var(cexp(id(Int)) : aType(id(Int)), id(a)) : id(Void)],
+                       cexp(id(Int)) : id(Int),
+                       [],
+                       if(or(equal(readField(self : id(Paire), id(x)) : id(Int), int(0) : id(Int)) : id(Bool),
+                             equal(readField(self : id(Paire), id(x)) : id(Int), int(0) : id(Int)) : id(Bool)) : id(Bool),
+                          return(id(a) : id(Int)) : id(Void),
+                          return(readField(self : id(Paire), id(x)) : id(Int)) : id(Void)) : id(Void)
+                      ) : id(Int) -> id(Int),
+                method(id(getY),
+                       [],
+                       cexp(id(Int)) : id(Int),
+                       [],
+                       return(readField(self : id(Paire), id(y)) : id(Int)) : id(Void)
+                      ) : none -> id(Int)
+               ]) : id(Void),
+         class(id(Triplet),
+               cexp(id(Paire)) : aType(id(Paire)),
+               [var(cexp(id(Int)) : id(Int), id(z)) : id(Void)],
+               [method(id(getX),
+                       [var(cexp(id(Int)) : aType(id(Int)), id(a)) : id(Void)],
+                       cexp(id(Int)) : id(Int),
+                       [],
+                       seq(while((not equal(id(a) : id(Int), int(0) : id(Int)) : id(Bool)) : id(Bool),
+                                 seq(writeField(self : id(Triplet),id(x),
+                                                times(readField(self : id(Triplet), id(x)) : id(Int), int(2) : id(Int)) : id(Int)) : id(Void),
+                                     assign(id(a) : id(Int), minus(id(a) : id(Int), int(1) : id(Int)) : id(Int)) : id(Void)) : id(Void)
+                                ) : id(Void),
+                           return(readField(self : id(Triplet), id(x)) : id(Int)) : id(Void)) : id(Void)
+                      ) : id(Int) -> id(Int),
+                method(id(getZ),
+                       [],
+                       cexp(id(Int)) : id(Int),
+                       [],
+                       return(readField(self : id(Triplet), id(z)) : id(Int)) : id(Void)
+                      ) : none -> id(Int),
+               ]) : id(Void),
+        ],
+   [var(cexp(id(Paire)) : aType(id(Paire)), id(p)) : id(Void),
+    var(cexp(id(Triplet)) : aType(id(Triplet)), id(t)) : id(Void)],
+   seq(assign(id(p) : id(Paire), new(cexp(id(Paire)) : aType(id(Paire))) : id(Paire)) : id(Void),
+     seq(writeField(id(p) : id(Paire), id(x), int(0) : id(Int)) : id(Void),
+       seq(writeField(id(p) : id(Paire), id(y), int(2) : id(Int)) : id(Void),
+         seq(writeln(methodCall(id(p) : id(Paire), id(getX), [int(100) : id(Int)]) : id(Int)) : id(Void),
+           seq(writeln(methodCall(id(p) : id(Paire), id(getY), []) : id(Int)) : id(Void),
+             seq(assign(id(t) : id(Triplet), new(cexp(id(Triplet)) : aType(id(Triplet))) : id(Triplet)) : id(Void),
+               seq(writeField(id(t) : id(Triplet), id(x), int(10) : id(Int)) : id(Void),
+                 seq(writeField(id(t) : id(Triplet), id(y), int(20) : id(Int)) : id(Void),
+                   seq(writeField(id(t) : id(Triplet), id(z), int(30) : id(Int)) : id(Void),
+                     seq(writeln(methodCall(id(t) : id(Triplet), id(getX), [int(5) : id(Int)]) : id(Int)) : id(Void),
+                       seq(writeln(methodCall(id(t) : id(Triplet), id(getY), []) : id(Int)) : id(Void),
+                           writeln(methodCall(id(t) : id(Triplet), id(getZ), []) : id(Int)) : id(Void)
+                          ) : id(Void)
+                        ) : id(Void)
+                      ) : id(Void)
+                    ) : id(Void)
+                  ) : id(Void)
+                ) : id(Void)
+              ) : id(Void)
+            ) : id(Void)
+          ) : id(Void)
+        ) : id(Void)
+      ) : id(Void)
+) : id(Void)

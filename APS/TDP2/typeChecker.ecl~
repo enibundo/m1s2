@@ -1,0 +1,486 @@
+%*****************************************************************************
+% 
+% Verificateur de types de BOPL
+%
+% auteur :      (C) Jacques.Malenfant@lip6.fr
+%
+% cours :       MI030 - Analyse des programmes et sémantique
+%
+% date :        22 fevrier 2011
+%
+%*****************************************************************************
+
+
+%*****************************************************************************
+% Abstract syntax (untyped)
+%
+% program ::= program(class*, var*, inst)
+% class   ::= class(id, cexp, var*, method*)
+% cexp    ::= cexp(id)
+% var     ::= var(cexp, id)
+% method  ::= method(id, var*, cexp, var*, inst)
+% inst    ::= seq(inst, inst) | assign(id, exp) | writeField(exp, id, exp) |
+%             if(exp, inst, inst) | while(exp, inst) | return(exp) |
+%             writeln(exp)
+% exp     ::= int(N) | boolean(true) | boolean(false) | not(exp) | nil |
+%             self | super | new(cexp) | instanceof(exp, cexp) | id |
+%             methodcall(exp, id, exp*) | readField(exp, id) |id(Atom) |
+%             plus(exp, exp) | minus(exp, exp) | times(exp, exp) |
+%             equal(exp, exp) | and(exp, exp) | or(exp, exp) | less(exp, exp)
+%
+%*****************************************************************************
+
+%*****************************************************************************
+% Abstract syntax (typed)
+%
+% tprogram ::= program(tclass*, tvar*, tinst) : type
+% tclass   ::= class(id, tcexp, tvar*, tmethod*) : type
+% tcexp    ::= cexp(id) : ctype
+% tvar     ::= var(cexp, id) : type
+% tmethod  ::= method(id, tvar*, tcexp, tvar*, tinst) : mtype
+% tinst    ::= seq(tinst, tinst) : type | assign(id, texp) : type |
+%              writeField(texp, id, texp) : type |
+%              if(texp, tinst, tinst) : type |
+%              while(texp, tinst) : type | return(texp) : type |
+%              writeln(texp) : type
+% texp     ::= int(N) : type | boolean(true) : type | boolean(false) : type |
+%              not(exp) : type | nil : type | self : type | super : type |
+%              new(tcexp) : type | instanceof(texp, tcexp) : type |
+%              id : type | methodcall(texp, id, texp*) : type |
+%              readField(texp, id) : type | plus(texp, texp) : type |
+%              minus(texp, texp) : type | times(texp, texp) : type |
+%              equal(texp, texp) : type | and(texp, texp) : type |
+%              or(texp, texp) : type | less(texp, texp) : type
+% type     ::= id | id(Bool) | id(Int) | id(Object) | id(Void)
+% ctype    ::= aType(id)
+% mtype    ::= ftypes -> type
+% ftypes   ::= type x ... x type | none
+%
+%*****************************************************************************
+
+:- use_module(library(pretty_print)).
+:- use_module(parser).
+
+:- module(typeChecker).
+:- export typeCheckFile/1, typeCheckFile/2, typeCheckProgram/2.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckFile/1
+%
+% typeCheckFile(+FileName)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckFile(FileName) :-
+  scanner:scan(FileName, Tokens),
+  parser:parse(Tokens, AST),
+  typeCheckProgram(AST, TypedAST),
+  pretty_print:pretty_print(stdout, TypedAST, 80).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckFile/2
+%
+% typeCheckFile(+FileName, -TypedAST)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckFile(FileName, TypedAST) :-
+  scanner:scan(FileName, Tokens),
+  parser:parse(Tokens, AST),
+  typeCheckProgram(AST, TypedAST),
+  pretty_print:pretty_print(stdout, TypedAST, 80).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckProgram/2
+%
+% typeCheckProgram(+Program, -TProgram)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckProgram(program(Classes, Vars, Inst),
+                 program(TClasses, TVars, TInst:T):id('Void')) :-
+  typeCheckClasses(Classes, [], [], InheritanceC, TypingC, TClasses),
+  typeCheckVars(Vars, none, InheritanceC, TypingC, TypingC1, TVars),
+  typeCheckInst(Inst, noCurrentClass, InheritanceC, TypingC1, noReturnType,
+                TInst:T).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckClasses/6
+%
+% typeCheckClasses(+ClassList, +InheritanceC, +TypingC,
+%                              -NewInheritanceC, -NewTypingC, -TypedClassList)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckClasses([], InheritanceC, TypingC, InheritanceC, TypingC, []).
+typeCheckClasses([C|Cs], InheritanceC1, TypingC1,
+                         InheritanceC3, TypingC3, [TC|TCs]) :-
+  typeCheckClass(C, InheritanceC1, TypingC1, InheritanceC2, TypingC2, TC),
+  typeCheckClasses(Cs, InheritanceC2, TypingC2, InheritanceC3, TypingC3, TCs).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckClass/6
+%
+% typeCheckClass(+Class, +InheritanceC, +TypingC,
+%                                  -NewInheritanceC, -NewTypingC, -TypedClass)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckClass(class(Id, Cexp, Vars, Methods), InheritanceC1, TypingC1,
+                                               InheritanceC2, TypingC3,
+               class(Id, TCexp, TVars, TMethods):id('Void')) :-
+  typeCheckCexp(Cexp, InheritanceC1, TCexp),
+  TCexp = cexp(S):_,
+  typeCheckVars(Vars, Id, InheritanceC1, TypingC1, TypingC2, TVars),
+  InheritanceC2 = [inherits(Id, S)|InheritanceC1],
+  typeCheckMethods(Methods, Id, InheritanceC2, TypingC2, TypingC3,
+                   TMethods). 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckCexp/3
+%
+% typeCheckCexp(+Exp, +InheritanceContext, -TypedExp)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckCexp(cexp(Id), InheritanceC, cexp(Id):aType(Id)) :-
+  isType(Id, InheritanceC).
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckVars/6
+%
+% typeCheckVars(+InstVarList, +CurrentClass, +InheritanceContext,
+%               +TypingContext, -NewTypingContext, -TypedInstVarList)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckVars([], _, _, TypingC, TypingC, []).
+typeCheckVars([V|Vars], Class, InheritanceC, TypingC1, TypingC3, [TV|TVars]) :-
+  typeCheckVar(V, Class, InheritanceC, TypingC1, TypingC2, TV),
+  typeCheckVars(Vars, Class, InheritanceC, TypingC2, TypingC3, TVars).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckVar/6
+%
+% typeCheckVar(+InstVar, +CurrentClass, +InheritanceContext,
+%              +TypingContext, -NewTypingContext, -TypedInstVar)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckVar(var(Cexp, Id), none, InheritanceC, TypingC1,
+             [Id:T|TypingC1], var(TCexp:aType(T), Id):id('Void')) :-
+  typeCheckCexp(Cexp, InheritanceC, TCexp:aType(T)).
+typeCheckVar(var(Cexp, Id), Class, InheritanceC, TypingC1,
+             [((Class@Id):T)|TypingC1], var(TCexp:aType(T), Id):id('Void')) :-
+  Class \= none,
+  typeCheckCexp(Cexp, InheritanceC, TCexp:aType(T)).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckMethods/6
+%
+% typeCheckMethods(+MethodList, +CurrentClass, +InheritanceC, +TypingC,
+%                                                 -NewTypingC, -NewMethodList)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckMethods([], _, _, TypingC, TypingC, []).
+typeCheckMethods([M|Ms], CClass, InheritanceC, TypingC1, TypingC3,
+                                                                 [TM|TMs]) :-
+  typeCheckMethod(M, CClass, InheritanceC, TypingC1, TypingC2, TM),
+  typeCheckMethods(Ms, CClass, InheritanceC, TypingC2, TypingC3, TMs).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckMethod/6
+%
+% typeCheckMethod(+Method, +CurrentClass, +InheritanceC, +OldTypingContext,
+%                 -NewTypingContext, -TMethod)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckMethod(method(Id, Formals, Cexp, Locals, Inst), CClass, 
+              InheritanceC, TypingC, [(CClass@Id):(TFs->RT)|TypingC],
+              method(Id, TFormals, TCexp:RT, TLocals, TInst:T):(TFs->RT)) :-
+
+  typeCheckVars(Formals, none, InheritanceC, TypingC, TypingC1, TFormals),
+
+  formalsType(TFormals, TFs),
+
+  typeCheckCexp(Cexp, InheritanceC, TCexp:aType(RT)),
+
+  (  findMethod(CClass, Id, InheritanceC, TypingC1, TFsi->RTi),
+     contravariant(TFsi->RTi, TFs->RT, InheritanceC),
+     !
+  ;  true
+  ),
+
+  typeCheckVars(Locals, none, InheritanceC, TypingC1, TypingC2, TLocals),
+
+  typeCheckInst(Inst, CClass, InheritanceC, TypingC2, RT, TInst:T).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckInst/7
+%
+% typeCheckInst(+Inst, +CurrentClass, +InheritanceContext, +TypingContext,
+%                                                     +ReturnType, -TypedInst)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckInst(seq(Inst1, Inst2), CClass, InheritanceC, TypingC, RT, 
+                                           seq(TInst1, TInst2):id('Void')) :-
+  typeCheckInst(Inst1, CClass, InheritanceC, TypingC, RT, TInst1),
+  typeCheckInst(Inst2, CClass, InheritanceC, TypingC, RT, TInst2).
+
+typeCheckInst(assign(Id, Exp), CClass, InheritanceC, TypingC, _,
+                                        assign(Id:T1, TExp:T2):id('Void')) :-
+  typeCheckExp(Id, CClass, InheritanceC, TypingC, Id:T1),
+  typeCheckExp(Exp, CClass, InheritanceC, TypingC, TExp:T2),
+  conformsTo(T2, T1, InheritanceC).
+
+typeCheckInst(return(Exp), CClass, InheritanceC, TypingC, RT,
+                                                return(TExp:T):id('Void')) :-
+  typeCheckExp(Exp, CClass, InheritanceC, TypingC, TExp:T),
+  conformsTo(T, RT, InheritanceC).
+
+typeCheckInst(writeln(Exp), CClass, InheritanceC, TypingC, _,
+                                               writeln(TExp:T):id('Void')) :-
+  typeCheckExp(Exp, CClass, InheritanceC, TypingC, TExp:T).
+
+
+typeCheckInst(writeField(Exp1, Id, Exp2), CClass, InheritanceC, TypingC, _, 
+                            writeField(TExp1:T1, Id, TExp2:T2):id('Void')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:T1),
+  findType(T1@Id, InheritanceC, TypingC, T),
+  
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:T2),
+  conformsTo(T2, T, InheritanceC).
+
+typeCheckInst(if(BExp, Then, Else), CClass, InheritanceC, TypingC, RT,
+                      if(TBExp:id('Bool'), TThen:T1, TElse:T2):id('Void')) :-
+  typeCheckExp(BExp, CClass, InheritanceC, TypingC, TBExp:id('Bool')),
+  typeCheckInst(Then, CClass, InheritanceC, TypingC, RT, TThen:T1),
+  typeCheckInst(Else, CClass, InheritanceC, TypingC, RT, TElse:T2).
+
+typeCheckInst(while(BExp, Inst), CClass, InheritanceC, TypingC, RT,
+                              while(TBExp:id('Bool'), TInst:T):id('Void')) :-
+  typeCheckExp(BExp, CClass, InheritanceC, TypingC, TBExp:id('Bool')),
+  typeCheckInst(Inst, CClass, InheritanceC, TypingC, RT, TInst:T).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% formalsType/2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+formalsType([], none).
+formalsType(TFormals, TFs) :-
+  formalsTypeNonEmpty(TFormals, TFs).
+
+formalsTypeNonEmpty([var(cexp(_):aType(T), _):_], T).
+formalsTypeNonEmpty([var(cexp(_):aType(T), _):_|Formals], T * TFs) :-
+  formalsTypeNonEmpty(Formals, TFs).
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckExp/5
+% typeCheckExp(+Exp, +CurrentClass, +InheritanceContext, +TypingContext,
+%                                                                  -TypedExp)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckExp(int(N), _, _, _, int(N):id('Int')) :- integer(N).
+
+typeCheckExp(plus(Exp1, Exp2), CClass, InheritanceC, TypingC,
+                         plus(TExp1:id('Int'), TExp2:id('Int')):id('Int')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:id('Int')),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:id('Int')).
+
+typeCheckExp(minus(Exp1, Exp2), CClass, InheritanceC, TypingC, 
+                         minus(TExp1:id('Int'), TExp2:id('Int')):id('Int')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:id('Int')),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:id('Int')).
+
+typeCheckExp(times(Exp1, Exp2), CClass, InheritanceC, TypingC, 
+                         times(TExp1:id('Int'), TExp2:id('Int')):id('Int')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:id('Int')),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:id('Int')).
+
+typeCheckExp(true, _, _, _, true:id('Bool')).
+typeCheckExp(false, _, _, _, false:id('Bool')).
+
+typeCheckExp(or(Exp1, Exp2), CClass, InheritanceC, TypingC,
+                         or(TExp1:id('Bool'), TExp2:id('Bool')):id('Bool')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:id('Bool')),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:id('Bool')).
+
+typeCheckExp(and(Exp1, Exp2), CClass, InheritanceC, TypingC,
+                        and(TExp1:id('Bool'), TExp2:id('Bool')):id('Bool')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:id('Bool')),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:id('Bool')).
+
+typeCheckExp(less(Exp1, Exp2), CClass, InheritanceC, TypingC,
+                         less(TExp1:id('Int'), TExp2:id('Int')):id('Bool')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:id('Int')),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:id('Int')).
+
+typeCheckExp(equal(Exp1, Exp2), CClass, InheritanceC, TypingC,
+                                      equal(TExp1:C1, TExp2:C2):id('Bool')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:C1),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:C2),
+  C1 = C2.
+
+typeCheckExp(not(Exp), CClass, InheritanceC, TypingC,
+                                           not(TExp:id('Bool')):id('Bool')) :-
+  typeCheckExp(Exp, CClass, InheritanceC, TypingC, TExp:id('Bool')).
+
+typeCheckExp(instanceof(Exp1, Exp2), CClass, InheritanceC, TypingC,
+                          instanceof(TExp1:T1, TExp2:aType(T2)):id('Bool')) :-
+  typeCheckExp(Exp1, CClass, InheritanceC, TypingC, TExp1:T1),
+  typeCheckExp(Exp2, CClass, InheritanceC, TypingC, TExp2:aType(T2)).
+
+typeCheckExp(nil, _, _, _, nil:id('Object')).
+
+% ATTENTION : le type de self n'est en fait connu que statiquement.
+% En prenant le type de la classe courante ici, on ne fait que vérifier
+% qu'il y aura sûrement un champ ou une méthode qui va à cet endroit dans
+% le programme.  À l'exécution, cela serait remplacé par la méthode
+% re définie dans la sous-classe qui est le type dynamique de self (les
+% champs n'étant pas redéfinissables, le type d'un champ est de facto
+% statique.  En quelque sorte, on dit ici que le type de self est au
+% moins CClass, pour les besoins de la vérification de type, mais il
+% peut être plus précis (une sous-classe de CClass).  La contravariance
+% garantit que la vérification de type faite ici sera correcte aussi
+% avec le type dynamique.
+typeCheckExp(self, CClass, _, _, self:CClass).
+
+typeCheckExp(super, CClass, InheritanceC, _, super:T) :-
+  member(inherits(CClass, T), InheritanceC).
+
+typeCheckExp(new(Cexp), _, InheritanceC, _, new(TCexp:aType(T1)):T) :-
+  typeCheckCexp(Cexp, InheritanceC, TCexp:aType(T1)),
+  conformsTo(T1, T, InheritanceC).
+
+typeCheckExp(readField(Exp, Id), CClass, InheritanceC, TypingC,
+                                                  readField(TExp:T1, Id):T) :-
+  typeCheckExp(Exp, CClass, InheritanceC, TypingC, TExp:T1),
+
+  findType(T1@Id, InheritanceC, TypingC, TField),
+  conformsTo(TField, T, InheritanceC).
+
+typeCheckExp(methodcall(ExpRec, Id, Actuals), CClass, InheritanceC, TypingC,
+                                 methodCall(TExpRec:TRec, Id, TActuals):RT) :-
+  typeCheckExp(ExpRec, CClass, InheritanceC, TypingC, TExpRec:TRec),
+  typeCheckAll(Actuals, CClass, InheritanceC, TypingC, TActuals),
+  findMethod(TRec, Id, InheritanceC, TypingC, TFormals->RT),
+  actualsConformTo(TActuals, InheritanceC, TFormals).
+
+typeCheckExp(id(Atom), _, InheritanceC, TypingC, id(Atom):T) :-
+  not isType(id(Atom), InheritanceC),
+  findType(id(Atom), InheritanceC, TypingC, T).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% isType/2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% isType(+Id, +InheritanceC)
+isType(id('Object'), _).
+isType(id('Int'), _).
+isType(id('Bool'), _).
+isType(id('Void'), _).
+isType(Id, InheritanceC) :-
+  member(inherits(Id, _), InheritanceC).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% conformsTo/3
+%
+% conformsTo(+T1, +T2, +InheritanceContext)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+conformsTo(T1, T2, _) :-
+  (var(T1) ; var(T2)),
+  !,
+  T1 = T2.
+conformsTo(T1, T2, _) :-
+  T1 = T2,
+  !.
+conformsTo(T1, T2, InheritanceC) :-
+  member(inherits(T1, T2), InheritanceC),
+  !.
+conformsTo(T1, T2, InheritanceC) :-
+  member(inherits(T1, T), InheritanceC),
+  conformsTo(T, T2, InheritanceC).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% actualsConformTo/3
+%
+% actualsConformTo(+ActualTypes, +InheritanceContext, +FormalTypes)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+actualsConformTo([], _, none).
+actualsConformTo([_:T1], InheritanceC, T2) :-
+  conformsTo(T1, T2, InheritanceC).
+actualsConformTo([_:T1|T1s], InheritanceC, T2 * T2s) :-
+  conformsTo(T1, T2, InheritanceC),
+  actualsConformTo(T1s, InheritanceC, T2s).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeCheckAll/5
+%
+% typeCheckAll(+ExpList, +CurrentClass, +InheritanceContext, +TypingContext,
+%                                                               -TypedExpList)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+typeCheckAll([], _, _, _, []).
+typeCheckAll([Exp|Exps], CClass, InheritanceC, TypingC, [TExp|TExps]) :-
+  typeCheckExp(Exp, CClass, InheritanceC, TypingC, TExp),
+  typeCheckAll(Exps, CClass, InheritanceC, TypingC, TExps).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findType/4
+%
+% findType(+Id, +InheritanceC, +TypingContext, -Type)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+findType(Id, _, TypingC, T) :-
+  member(Id:T, TypingC),
+  !.
+findType(C@Id, InheritanceC, TypingC, T) :-
+  member(inherits(C, S), InheritanceC),
+  !,
+  findType(S@Id, InheritanceC, TypingC, T).
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findMethod/5
+%
+% findMethod(+Class, +Id, +InheritanceContext, +TypingContext, Type) 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+findMethod(Class, Id, InheritanceC, TypingC, T) :-
+  findType(Class@Id, InheritanceC, TypingC, T), !.
+findMethod(Class, Id, InheritanceC, TypingC, T) :-
+  member(inherits(Class, Super), InheritanceC),
+  findMethod(Super, Id, InheritanceC, TypingC, T).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% contravariant/3
+%
+% contravariant(+TypeInheritedMethod, + TypeNewMethod, +InheritanceContext)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+contravariant(TFsi->RTi, TFs->RT, InheritanceC) :-
+  allConformTo(TFsi, TFs, InheritanceC),
+  conformsTo(RT, RTi, InheritanceC).
+
+allConformTo(TFi * TFsi, TF * TFs, InheritanceC) :-
+  !,
+  conformsTo(TFi, TF, InheritanceC),
+  allConformTo(TFsi, TFs, InheritanceC).
+allConformTo(TFi, TF, InheritanceC) :-
+  conformsTo(TFi, TF, InheritanceC).
