@@ -96,8 +96,17 @@ let change_output_channel oc = output_channel := oc;;
 
 let shift_string = String.make 256 '\t';;
 let out s = output_string !output_channel s;;
-let out_start s nb = out ("\n"^(String.sub shift_string 0 nb)^s);;
-let out_end s nb = out ("\n"^(String.sub shift_string 0 nb)^"}\n");;
+
+
+(*let out_start s nb = out ("\n"^(String.sub shift_string 0 (2*nb))^s);;
+*)
+
+let out_start s nb = 
+  out ("\n"^(String.sub shift_string 0 nb)^s^"");;
+
+let out_end s nb = 
+  out ("\n"^(String.sub shift_string 0 nb)^"\n");;
+
 let out_line s = out (s^"\n");;
 
 let out_before (fr,sd,nb) = 
@@ -145,7 +154,6 @@ let header_two  s =
   [ "##\n";
     "#  \n";
     "# \n";
-    (*"class "^s^" {\n"*)
   ]
 ;;
 
@@ -153,40 +161,24 @@ let footer_two  s = ();;
 
 let header_three  s = 
   List.iter out
-  [  "";
-     (*"public static void main(String []args) {\n"*)]
+    []
 ;;
 
 let footer_three  s = 
   List.iter out
-  [ (*"\n}}\n\n"*)]
+  [ ]
 ;;
-
-(* on recuoere le  type pour une declaration precise *)
 
 let string_of_const_type ct = match ct with   
     _->""
-      (*  INTTYPE    -> "MLint "
-	  | FLOATTYPE  -> "MLdouble "
-	  | STRINGTYPE -> "MLstring "
-	  | BOOLTYPE   -> "MLbool "
-	  | UNITTYPE   -> "MLunit "*)
 ;;
  
 let rec string_of_type typ = match typ with 
     _ -> ""
-      (*  
-	  CONSTTYPE t -> string_of_const_type t
-	  | ALPHA    ->  "MLvalue " 
-	  | PAIRTYPE -> "MLpair "
-	  | LISTTYPE -> "MLlist "
-	  | FUNTYPE  -> "MLfun "
-	  | REFTYPE  -> "MLref "*)
 ;;
 
 
 let prod_global_var instr = match instr with
- (* VAR (v,t) -> out_start ("static "^"MLvalue "^(*(string_of_type t)*)v^";") 1 *)
 | FUNCTION (ns,t1,ar,(p,t2), instr) ->
     out (ns^"= MLfun_"^ns);
     out_start "" 1
@@ -213,8 +205,6 @@ let prod_const c = match c with
 
 let rec prod_local_var (fr,sd,nb) (v,t) =
   ()
-    
-  (*out_start ("MLvalue "(string_of_type t)^v^";") nb;;*)
 ;;
 
 let rec prod_instr (fr,sd,nb) instr  = match instr with 
@@ -222,14 +212,15 @@ let rec prod_instr (fr,sd,nb) instr  = match instr with
       prod_const c;
       out_after (fr,sd,nb)
   | VAR (v,t)
-          -> if (nb = 0) && ( sd = "") then ()
-             else 
-             begin 
-               out_before (fr,sd,nb);
-               out v;
-               out_after (fr,sd,nb)           
-             end
-  | IF(i1,i2,i3) -> 
+    ->
+      if (nb = 0) && ( sd = "") then ()
+      else 
+        begin 
+	  out_before (fr,sd,nb);
+          out v;
+          out_after (fr,sd,nb)      
+        end
+  | IF(i1,i2,i3) ->
       out_start "if (" nb;
       prod_instr (false,"",nb) i1 ;
       out "):";
@@ -239,20 +230,15 @@ let rec prod_instr (fr,sd,nb) instr  = match instr with
   | RETURN i -> prod_instr (true,"",nb) i
   | AFFECT (v,i) -> prod_instr (false,v,nb) i
   | BLOCK(l,i) -> 
-      (* en python pas besoin de definir les variables locales *)
-      (*
-	List.iter (fun (v,t,i) -> prod_local_var (false,"",nb) 
-	(v,t)) l;*)
       List.iter (fun (v,t,i) -> prod_instr (false,v,nb) i) l;
       prod_instr (fr,sd,nb) i;
       
 	
   | APPLY(i1,i2) -> 
       out_before(fr,sd,nb);
-      (*out ("((MLfun)");*)
+      
       prod_instr (false,"",nb) i1;
-      (*out ")";*)
-      (*out ".invoke(";*)
+      
       out"(";
       prod_instr (false,"",nb) i2;     
       out")";
@@ -271,36 +257,15 @@ let rec prod_instr (fr,sd,nb) instr  = match instr with
 ;;
 
 let fun_header fn cn  = ()
-  
 ;;
 
-let prod_invoke cn  ar = () (*
-  List.iter out_line 
-     ["  public MLvalue invoke(MLvalue MLparam){";
-      "    if (MLcounter == (MAX-1)):"
-     ];
-
-  out "      return invoke_real("; (* to  finish with real name *)
-  for i=0 to ar-2 do 
-    out ("MLenv["^(string_of_int i)^"], ")
-  done;
-  out_line "MLparam);";     
-
-  List.iter out_line 
-     [
-      "    else:";
-      "      "^cn^" l = new "^cn^"(MLcounter+1);l.MLaddenv(MLenv,MLparam); return l;";
-      "    }";
-      "  }"
-      ]
-			    *)
-;;
+let prod_invoke cn  ar = () ;;
 
 let prod_invoke_fun cn ar t lp instr = 
   out ("def "^cn^"(");
   out (List.hd lp);
   List.iter (fun x -> out (", "^x)) (List.tl lp);
-  out_line "):";
+  out "):";
   prod_instr (true,"",1) instr;
 ;;
 
@@ -314,14 +279,8 @@ let prod_fun instr = match instr with
   FUNCTION (ns,t1,ar,(lp,t2),instr) -> 
     let class_name = "MLfun_"^ns in
       fun_header ns class_name ;
-      (*out_line ("def "^class_name^":");*)
-      out_line "";
-      (*out_line ("  private static int MAX = "^(string_of_int ar)^";") ;*)
-      out_line "";
-      (*prod_invoke class_name ar;*)
-      out_line "";
       prod_invoke_fun class_name ar t1 lp instr;
-      out_line "";           
+      out_line "";
   |  _ -> ()
 ;;
 
@@ -345,7 +304,9 @@ let prod_file filename ast_li =
   change_output_channel oc;  
   module_name:=filename;
   try 
+   
     header_main  filename;
+
     header_one  filename;
     prod_one  ast_li;
     footer_one  filename;
